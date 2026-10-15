@@ -1,6 +1,7 @@
 package br.com.fullcycle.infrastructure.jpa.entities;
 
 import br.com.fullcycle.domain.event.Event;
+import br.com.fullcycle.domain.event.EventStatus;
 import br.com.fullcycle.domain.event.EventTicket;
 import jakarta.persistence.*;
 
@@ -27,20 +28,29 @@ public class EventEntity {
 
     private UUID partnerId;
 
+    @Enumerated(EnumType.STRING)
+    private EventStatus status;
+
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "event")
     private Set<EventTicketEntity> tickets;
 
     public EventEntity() {
         this.tickets = new HashSet<>();
+        this.status = EventStatus.ACTIVE;
     }
 
-    public EventEntity(UUID id, String name, LocalDate date, int totalSpots, UUID partnerId) {
+    public EventEntity(UUID id, String name, LocalDate date, int totalSpots, UUID partnerId, EventStatus status) {
         this();
         this.id = id;
         this.name = name;
         this.date = date;
         this.totalSpots = totalSpots;
         this.partnerId = partnerId;
+        this.status = status != null ? status : EventStatus.ACTIVE;
+    }
+
+    public EventEntity(UUID id, String name, LocalDate date, int totalSpots, UUID partnerId) {
+        this(id, name, date, totalSpots, partnerId, EventStatus.ACTIVE);
     }
 
     public static EventEntity of(final Event event) {
@@ -49,7 +59,8 @@ public class EventEntity {
                 event.name().value(),
                 event.date(),
                 event.totalSpots(),
-                UUID.fromString(event.partnerId().value())
+                UUID.fromString(event.partnerId().value()),
+                event.status()
         );
 
         event.allTickets().forEach(entity::addTicket);
@@ -64,6 +75,7 @@ public class EventEntity {
                 this.date().format(DateTimeFormatter.ISO_LOCAL_DATE),
                 this.totalSpots(),
                 this.partnerId().toString(),
+                this.status != null ? this.status.name() : EventStatus.ACTIVE.name(),
                 this.tickets().stream()
                         .map(EventTicketEntity::toEventTicket)
                         .collect(Collectors.toSet())
@@ -120,6 +132,14 @@ public class EventEntity {
 
     public void setTickets(Set<EventTicketEntity> tickets) {
         this.tickets = tickets;
+    }
+
+    public EventStatus status() {
+        return status;
+    }
+
+    public void setStatus(EventStatus status) {
+        this.status = status;
     }
 
     @Override

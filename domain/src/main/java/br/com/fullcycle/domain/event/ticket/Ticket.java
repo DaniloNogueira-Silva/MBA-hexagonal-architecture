@@ -66,6 +66,10 @@ public class Ticket {
         return status;
     }
 
+    public void cancel() {
+        this.status = TicketStatus.CANCELLED;
+    }
+
     public Instant paidAt() {
         return paidAt;
     }

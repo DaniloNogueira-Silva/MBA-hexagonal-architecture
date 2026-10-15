@@ -19,7 +19,7 @@ public class OutboxRelay {
 
     @Scheduled(fixedRate = 2_000)
     @Transactional
-    void execute() {
+    public void execute() {
         this.outboxJpaRepository.findTop100ByPublishedFalse()
                 .forEach(it -> {
                     this.queueGateway.publish(it.content());

@@ -26,6 +26,24 @@ public class Event {
     private LocalDate date;
     private int totalSpots;
     private PartnerId partnerId;
+    private EventStatus status;
+
+    public Event(
+            final EventId eventId,
+            final String name,
+            final String date,
+            final Integer totalSpots,
+            final PartnerId partnerId,
+            final EventStatus status,
+            final Set<EventTicket> tickets
+    ) {
+        this(eventId, tickets);
+        this.setName(name);
+        this.setDate(date);
+        this.setTotalSpots(totalSpots);
+        this.setPartnerId(partnerId);
+        this.setStatus(status);
+    }
 
     public Event(
             final EventId eventId,
@@ -35,11 +53,7 @@ public class Event {
             final PartnerId partnerId,
             final Set<EventTicket> tickets
     ) {
-        this(eventId, tickets);
-        this.setName(name);
-        this.setDate(date);
-        this.setTotalSpots(totalSpots);
-        this.setPartnerId(partnerId);
+        this(eventId, name, date, totalSpots, partnerId, EventStatus.ACTIVE, tickets);
     }
 
     private Event(final EventId eventId, final Set<EventTicket> tickets) {
@@ -53,7 +67,7 @@ public class Event {
     }
 
     public static Event newEvent(final String name, final String date, final Integer totalSpots, final Partner partner) {
-        return new Event(EventId.unique(), name, date, totalSpots, partner.partnerId(), null);
+        return new Event(EventId.unique(), name, date, totalSpots, partner.partnerId(), EventStatus.ACTIVE, null);
     }
 
     public static Event restore(
@@ -64,10 +78,47 @@ public class Event {
             final String partnerId,
             final Set<EventTicket> tickets
     ) {
-        return new Event(EventId.with(id), name, date, totalSpots, PartnerId.with(partnerId), tickets);
+        return restore(id, name, date, totalSpots, partnerId, EventStatus.ACTIVE.name(), tickets);
+    }
+
+    public static Event restore(
+            final String id,
+            final String name,
+            final String date,
+            final int totalSpots,
+            final String partnerId,
+            final String status,
+            final Set<EventTicket> tickets
+    ) {
+        return new Event(
+                EventId.with(id),
+                name,
+                date,
+                totalSpots,
+                PartnerId.with(partnerId),
+                status != null ? EventStatus.valueOf(status) : EventStatus.ACTIVE,
+                tickets
+        );
+    }
+
+    public void cancel() {
+        if (EventStatus.CANCELLED == this.status) {
+            throw new ValidationException("Event already cancelled");
+        }
+
+        this.status = EventStatus.CANCELLED;
+        this.domainEvents.add(new EventCancelled(this.eventId));
+    }
+
+    public boolean isCancelled() {
+        return EventStatus.CANCELLED == this.status;
     }
 
     public EventTicket reserveTicket(final CustomerId aCustomerId) {
+        if (isCancelled()) {
+            throw new ValidationException("Event is cancelled");
+        }
+
         this.allTickets().stream()
                 .filter(it -> Objects.equals(it.customerId(), aCustomerId))
                 .findFirst()
@@ -106,6 +157,10 @@ public class Event {
 
     public PartnerId partnerId() {
         return partnerId;
+    }
+
+    public EventStatus status() {
+        return status;
     }
 
     public Set<EventTicket> allTickets() {
@@ -160,4 +215,9 @@ public class Event {
 
         this.totalSpots = totalSpots;
     }
+
+    private void setStatus(final EventStatus status) {
+        this.status = status != null ? status : EventStatus.ACTIVE;
+    }
 }
+
